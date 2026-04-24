@@ -1,1 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SplitDash — Real-Time Bill Splitter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0f172a;
+    --paper: #f8fafc;
+    --rose: #f43f5e;
+    --indigo: #4f46e5;
+    --yellow: #fbbf24;
+    --green: #10b981;
+    --orange: #f97316;
+    --blue: #3b82f6;
+    --pink: #ec4899;
+    --slate2: #e2e8f0;
+    --slate4: #94a3b8;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  body { font-family: 'Space Grotesk', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; }
+  .hide { display: none !important; }
 
+  /* ─── GATEWAY ─── */
+  #gateway {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--paper); padding: 1.5rem;
+  }
+  .gateway-card {
+    max-width: 420px; width: 100%;
+    background: #fff; border: 6px solid var(--ink); padding: 3rem;
+    box-shadow: 18px 18px 0 var(--ink);
+  }
+  .logo { font-size: 4rem; font-weight: 900; letter-spacing: -0.05em; font-style: italic; line-height: 1; }
+  .logo-sub { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--indigo); margin-top: .5rem; }
+  .btn { cursor: pointer; font-family: inherit; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.7rem; border: 4px solid var(--ink); padding: 1rem 1.5rem; transition: transform .1s, box-shadow .1s; }
+  .btn:active { transform: translate(3px,3px); box-shadow: none !important; }
+  .btn-dark { background: var(--ink); color: #fff; box-shadow: 4px 4px 0 var(--indigo); }
+  .btn-light { background: #fff; color: var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+  .btn-yellow { background: var(--yellow); color: var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+  .btn-rose { background: var(--rose); color: #fff; box-shadow: 4px 4px 0 var(--ink); }
+  .btn-block { width: 100%; display: flex; align-items: center; justify-content: space-between; }
+  .btn-sm { padding: .5rem .9rem; font-size: .65rem; }
+  input, textarea {
+    font-family: inherit; font-weight: 700; font-size: 1rem;
+    border: 4px solid var(--ink); padding: .75rem 1rem; width: 100%; outline: none;
+    transition: background .15s;
+  }
+  input:focus, textarea:focus { background: #eef2ff; }
+  label { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--slate4); display: block; margin-bottom: .4rem; }
+  .gateway-actions { display: flex; flex-direction: column; gap: .75rem; margin-top: 2rem; }
+  .gateway-sub { font-size: .6rem; font-weight: 700; text-transform: uppercase; color: var(--slate4); font-style: italic; margin-top: .2rem; }
+  .back-link { font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; cursor: pointer; text-decoration: underline; color: var(--slate4); margin-top: 1rem; display: inline-block; }
+  .form-pair { display: flex; gap: .75rem; margin-top: 1.5rem; }
+  .form-pair .btn { flex: 1; text-align: center; justify-content: center; }
+
+  /* ─── MAIN APP ─── */
+  #app { display: none; }
+  .header {
+    border-bottom: 6px solid var(--ink); padding: 2rem 3rem 1.5rem;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    max-width: 1400px; margin: 0 auto;
+  }
+  .header-title { font-size: 5rem; font-weight: 900; letter-spacing: -.05em; font-style: italic; line-height: 1; }
+  .badge { background: var(--ink); color: #fff; font-size: .55rem; font-weight: 900; text-transform: uppercase; letter-spacing: .15em; padding: .2rem .5rem; transform: rotate(-6deg); display: inline-block; margin-left: .75rem; vertical-align: middle; margin-top: .5rem; }
+  .group-code { font-size: .6rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; color: var(--slate4); margin-top: .5rem; font-style: italic; }
+  .group-code span { color: var(--indigo); background: #eef2ff; padding: .1rem .4rem; }
+  .avatar-stack { display: flex; }
+  .avatar {
+    width: 2.8rem; height: 2.8rem; border-radius: 50%; border: 3px solid var(--paper);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .65rem; font-weight: 900; color: #fff; margin-left: -1rem;
+    cursor: pointer; transition: transform .2s; box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .avatar:first-child { margin-left: 0; }
+  .avatar:hover { transform: translateY(-.5rem); }
+  .live-badge { font-size: .6rem; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; padding: .35rem .7rem; border: 2px solid; border-radius: 4px; display: flex; align-items: center; gap: .4rem; background: #dcfce7; color: #15803d; border-color: #86efac; }
+  .pulse { width: .5rem; height: .5rem; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+
+  .main-grid { max-width: 1400px; margin: 0 auto; padding: 2.5rem 3rem; display: grid; grid-template-columns: 1fr 380px; gap: 3rem; }
+  @media(max-width: 1024px) { .main-grid { grid-template-columns: 1fr; } }
+
+  /* ─── ITEMS ─── */
+  .section-title { font-size: 2rem; font-weight: 900; letter-spacing: -.04em; font-style: italic; display: flex; align-items: center; gap: .75rem; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .toolbar-btns { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .table-wrap { border: 4px solid var(--ink); box-shadow: 10px 10px 0 var(--ink); overflow: hidden; }
+  .table-header { display: grid; grid-template-columns: 1fr 100px 200px; background: var(--ink); color: #fff; padding: 1rem 1.5rem; font-size: .6rem; font-weight: 900; text-transform: uppercase; letter-spacing: .2em; }
+  .table-header div:nth-child(2) { text-align: right; }
+  .table-header div:nth-child(3) { text-align: center; }
+  .item-row {
+    display: grid; grid-template-columns: 1fr 100px 200px;
+    padding: .9rem 1.5rem; align-items: center; background: #fff;
+    border-bottom: 2px solid #f1f5f9; position: relative;
+    transition: background .15s;
+  }
+  .item-row:hover { background: #f0f4ff; }
+  .item-row.locked { opacity: .55; background: #f8fafc; }
+  .item-row .cat-bar {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  }
+  .cat-food { background: var(--orange); }
+  .cat-drink { background: var(--blue); }
+  .cat-dessert { background: var(--pink); }
+  .item-name { font-weight: 900; font-size: .95rem; letter-spacing: -.02em; }
+  .item-name.struck { text-decoration: line-through; color: var(--slate4); }
+  .qty-controls { display: inline-flex; align-items: center; gap: .2rem; margin-left: .5rem; }
+  .qty-btn {
+    width: 1.3rem; height: 1.3rem; border: 2px solid var(--slate2); background: #f1f5f9;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 900;
+    border-radius: 3px; transition: background .1s;
+  }
+  .qty-btn:hover { background: var(--slate2); }
+  .qty-tag { font-size: .65rem; font-weight: 900; text-transform: uppercase; padding: .15rem .4rem; background: #f1f5f9; border: 1px solid var(--slate2); border-radius: 3px; }
+  .claim-avatars { display: flex; margin-top: .4rem; gap: .2rem; flex-wrap: wrap; }
+  .mini-avatar { width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: .55rem; font-weight: 900; color: #fff; cursor: help; }
+  .expiry-warn { font-size: .6rem; font-weight: 900; color: #ef4444; text-transform: uppercase; letter-spacing: .05em; animation: pulse 1s infinite; display: flex; align-items: center; gap: .3rem; margin-left: .5rem; }
+  .price-col { text-align: right; }
+  .price-main { font-family: var(--mono); font-weight: 800; font-size: 1rem; }
+  .price-ea { font-size: .65rem; color: var(--slate4); font-weight: 700; text-transform: uppercase; }
+  .action-col { display: flex; flex-direction: column; gap: .35rem; padding-left: 1rem; position: relative; }
+  .action-btns { display: flex; gap: .3rem; }
+  .claim-btn { flex: 1; padding: .5rem; font-size: .6rem; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; cursor: pointer; border: none; font-family: inherit; transition: filter .15s; }
+  .claim-btn:hover { filter: brightness(.9); }
+  .btn-claim-full { background: var(--indigo); color: #fff; box-shadow: 2px 2px 0 var(--ink); }
+  .btn-claim-split { background: #fff; color: var(--ink); border: 3px solid var(--ink) !important; }
+  .claimed-tag { background: var(--green); color: #fff; font-size: .6rem; font-weight: 900; text-transform: uppercase; text-align: center; padding: .4rem; display: flex; align-items: center; justify-content: center; gap: .3rem; }
+  .btn-undo-small { flex: 1; padding: .3rem; font-size: .55rem; font-weight: 900; text-transform: uppercase; cursor: pointer; border: 2px solid var(--ink); background: #fff; font-family: inherit; }
+  .btn-lock-small { flex: 1; padding: .3rem; font-size: .55rem; font-weight: 900; text-transform: uppercase; cursor: pointer; border: 2px solid var(--ink); background: var(--ink); color: #fff; font-family: inherit; }
+  .locked-tag { background: var(--ink); color: #fff; font-size: .6rem; font-weight: 900; text-transform: uppercase; text-align: center; padding: .5rem; display: flex; align-items: center; justify-content: center; gap: .3rem; }
+  .split-popup {
+    position: absolute; top: 3.5rem; right: 0; left: 0; z-index: 20;
+    background: #fff; border: 4px solid var(--ink); padding: .75rem; box-shadow: 6px 6px 0 var(--ink);
+  }
+  .split-popup label { font-size: .6rem; margin-bottom: .3rem; }
+  .split-popup-inner { display: flex; gap: .4rem; }
+  .split-popup input { border: 2px solid var(--slate2); padding: .35rem .5rem; font-size: .8rem; }
+  .split-popup .btn-xs { padding: .4rem .6rem; font-size: .6rem; background: var(--indigo); color: #fff; border: 2px solid var(--ink); cursor: pointer; font-family: inherit; font-weight: 900; }
+
+  /* ─── TOTALS ─── */
+  .totals-bar { background: var(--ink); color: #fff; padding: 2.5rem; border: 4px solid var(--ink); box-shadow: 10px 10px 0 var(--indigo); margin-top: 1.5rem; }
+  .totals-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; margin-bottom: 1.5rem; }
+  .total-label { font-size: .65rem; font-weight: 900; text-transform: uppercase; letter-spacing: .15em; color: var(--slate4); margin-bottom: .5rem; }
+  .total-value { font-family: var(--mono); font-size: 2rem; font-weight: 900; }
+  .total-value.accent { color: #6ee7b7; }
+  .grand-row { border-top: 6px solid rgba(79,70,229,.35); padding-top: 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+  .grand-label { font-size: 1.1rem; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; color: #818cf8; }
+  .grand-value { font-family: var(--mono); font-size: 4rem; font-weight: 900; line-height: 1; }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar { display: flex; flex-direction: column; gap: 2rem; }
+  .card { border: 4px solid var(--ink); background: #fff; }
+  .card-dark { border: 4px solid var(--ink); background: var(--ink); color: #fff; }
+  .card-head { font-size: .6rem; font-weight: 900; text-transform: uppercase; letter-spacing: .2em; padding: 1rem 1.5rem; border-bottom: 3px solid var(--slate2); }
+  .card-dark .card-head { border-color: rgba(255,255,255,.15); }
+  .card-body { padding: 1.5rem; }
+  .progress-wrap { display: flex; align-items: center; gap: 1.5rem; }
+  svg.ring { transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: #1e293b; }
+  .ring-fill { fill: none; stroke: #6366f1; stroke-linecap: round; transition: stroke-dashoffset .8s ease; }
+  .ring-pct { font-family: var(--mono); font-size: 1.2rem; font-weight: 900; color: #fff; }
+  .settled-amount { font-family: var(--mono); font-size: 2.2rem; font-weight: 900; font-style: italic; line-height: 1.1; }
+  .settled-sub { font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .15em; color: var(--slate4); margin-top: .5rem; }
+
+  /* leaderboard */
+  .leader-list { padding: 1rem 1.5rem; }
+  .leader-row { display: flex; align-items: center; gap: .75rem; padding: .75rem 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .leader-row:last-child { border-bottom: none; }
+  .leader-rank { width: 2rem; height: 2rem; border-radius: 50%; background: #fff; color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: .65rem; font-weight: 900; flex-shrink: 0; }
+  .leader-info { flex: 1; }
+  .leader-name { font-size: .75rem; font-weight: 900; text-transform: uppercase; }
+  .leader-badges { display: flex; gap: .25rem; flex-wrap: wrap; margin-top: .2rem; }
+  .badge-pill { font-size: .55rem; font-weight: 900; text-transform: uppercase; padding: .1rem .3rem; border-radius: 3px; display: inline-flex; align-items: center; gap: .2rem; }
+  .leader-total { font-family: var(--mono); font-weight: 900; color: #818cf8; }
+
+  /* breakdown */
+  .breakdown-list { padding: 1rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  .breakdown-row { border-left: 4px solid; padding-left: 1rem; }
+  .breakdown-name { font-size: .65rem; font-weight: 900; text-transform: uppercase; }
+  .breakdown-total { font-size: .75rem; font-weight: 900; font-family: var(--mono); }
+  .breakdown-detail { display: grid; grid-template-columns: repeat(3,1fr); gap: .25rem; margin-top: .3rem; font-size: .6rem; font-weight: 700; text-transform: uppercase; color: var(--slate4); }
+
+  /* diner status */
+  .diner-list { padding: 1rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  .diner-row { border-left: 4px solid; padding-left: 1rem; }
+  .diner-name-row { display: flex; align-items: center; justify-content: space-between; }
+  .diner-name { font-size: .65rem; font-weight: 900; text-transform: uppercase; }
+  .diner-total-badge { font-size: .6rem; font-weight: 900; text-transform: uppercase; padding: .15rem .4rem; border: 2px solid; border-radius: 3px; }
+  .item-tags { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .4rem; }
+  .item-tag { font-size: .6rem; font-weight: 700; text-transform: uppercase; background: #f1f5f9; color: var(--slate4); padding: .15rem .4rem; border-radius: 3px; display: inline-flex; align-items: center; gap: .25rem; }
+  .item-tag span { font-family: var(--mono); opacity: .6; }
+
+  /* insights */
+  .insights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; padding: 1rem 1.5rem 0; }
+  .insight-cell { background: #f8fafc; border: 2px solid #f1f5f9; padding: .75rem; border-radius: 3px; }
+  .insight-label { font-size: .6rem; font-weight: 900; text-transform: uppercase; color: var(--slate4); margin-bottom: .2rem; }
+  .insight-val { font-size: .9rem; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .insight-sub { font-family: var(--mono); font-weight: 700; font-size: .75rem; color: #d97706; }
+  .cat-bar-list { padding: .75rem 1.5rem 1.5rem; display: flex; flex-direction: column; gap: .6rem; }
+  .cat-row-label { display: flex; justify-content: space-between; font-size: .6rem; font-weight: 900; text-transform: uppercase; margin-bottom: .2rem; }
+  .cat-row-label span:last-child { color: var(--ink); }
+  .cat-track { height: 6px; background: #f1f5f9; border-radius: 99px; overflow: hidden; }
+  .cat-fill { height: 100%; border-radius: 99px; transition: width .5s ease; }
+  .cat-fill.food { background: var(--orange); }
+  .cat-fill.drink { background: var(--blue); }
+  .cat-fill.dessert { background: var(--pink); }
+
+  /* feedback */
+  .feedback-card { border: 4px solid var(--ink); background: #fff; box-shadow: 10px 10px 0 var(--rose); }
+  .star-row { display: flex; gap: .5rem; margin-top: .5rem; }
+  .star-btn {
+    width: 2.5rem; height: 2.5rem; border: 3px solid var(--ink); background: #fff;
+    cursor: pointer; font-size: .85rem; font-weight: 900; display: flex; align-items: center; justify-content: center;
+    transition: all .1s; font-family: var(--mono);
+  }
+  .star-btn.active { background: var(--yellow); transform: translate(-2px,-2px); box-shadow: 2px 2px 0 var(--ink); }
+  textarea.feedback-ta { min-height: 120px; resize: none; font-size: .85rem; font-weight: 600; }
+  .submit-btn {
+    width: 100%; padding: 1.1rem; background: var(--ink); color: #fff;
+    font-family: inherit; font-weight: 900; text-transform: uppercase; letter-spacing: .15em; font-size: .7rem;
+    cursor: pointer; border: none; box-shadow: 6px 6px 0 var(--rose); transition: transform .1s, box-shadow .1s;
+    display: flex; align-items: center; justify-content: center; gap: .5rem;
+  }
+  .submit-btn:hover { transform: translate(-1px,-1px); box-shadow: 7px 7px 0 var(--rose); }
+  .submit-btn:active { transform: translate(3px,3px); box-shadow: none; }
+  .submit-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .thanks-box { background: #fff1f2; border: 4px dashed var(--rose); padding: 2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+  .thanks-icon { width: 4rem; height: 4rem; background: var(--rose); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; animation: bounce 1s infinite; }
+  @keyframes bounce { 0%,100%{transform:scale(1)}50%{transform:scale(1.15)} }
+  .thanks-title { font-size: 1.1rem; font-weight: 900; text-transform: uppercase; }
+  .thanks-sub { font-size: .6rem; font-weight: 800; text-transform: uppercase; color: var(--rose); letter-spacing: .1em; }
+
+  /* footer */
+  .app-footer { max-width: 1400px; margin: 0 auto; padding: 2rem 3rem; border-top: 4px solid var(--ink); display: flex; justify-content: space-between; align-items: center; font-size: .6rem; font-weight: 900; text-transform: uppercase; letter-spacing: .15em; color: var(--slate4); font-style: italic; }
+  .footer-badge { background: var(--yellow); color: var(--ink); border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); padding: .4rem .8rem; font-size: .6rem; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; }
+  .footer-right { text-align: right; }
+  .footer-author { font-size: .55rem; font-weight: 900; color: var(--indigo); letter-spacing: .4em; margin-top: .4rem; }
+
+  /* misc */
+  .flex-col { display: flex; flex-direction: column; }
+  .gap-sm { gap: .4rem; }
+  .empty-msg { font-size: .65rem; font-weight: 700; text-transform: uppercase; color: var(--slate4); font-style: italic; text-align: center; padding: 1.5rem; }
+  .form-field { margin-bottom: 1.25rem; }
+  @media(max-width: 768px) {
+    .header { padding: 1.5rem; flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .header-title { font-size: 3.5rem; }
+    .main-grid { padding: 1.5rem; gap: 1.5rem; }
+    .grand-value { font-size: 2.5rem; }
+    .table-header, .item-row { grid-template-columns: 1fr 80px 160px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ GATEWAY ══════════ -->
+<div id="gateway">
+  <div class="gateway-card">
+    <div class="logo">SplitDash</div>
+    <div class="logo-sub">✓ Powered by real-time sync</div>
+
+    <div id="view-gateway" class="gateway-actions">
+      <button class="btn btn-dark btn-block" onclick="showView('create')">
+        <div>
+          <div>Start New Group</div>
+          <div class="gateway-sub">Generate a shareable code</div>
+        </div>
+        <span>＋</span>
+      </button>
+      <button class="btn btn-light btn-block" onclick="showView('join')">
+        <div>
+          <div>Join Existing</div>
+          <div class="gateway-sub">Enter your friend's code</div>
+        </div>
+        <span>→</span>
+      </button>
+    </div>
+
+    <div id="view-create" class="hide">
+      <div class="form-field" style="margin-top:1.5rem">
+        <label>Group Name</label>
+        <input id="input-create-name" type="text" placeholder="e.g. Weekend Brunch" autofocus>
+      </div>
+      <div class="form-pair">
+        <button class="btn btn-light" onclick="showView('gateway')">Back</button>
+        <button class="btn btn-dark" onclick="createGroup()" style="flex:2">Register Group</button>
+      </div>
+      <span class="back-link" onclick="showView('gateway')">← Back</span>
+    </div>
+
+    <div id="view-join" class="hide">
+      <div class="form-field" style="margin-top:1.5rem">
+        <label>Group Access Code</label>
+        <input id="input-join-code" type="text" placeholder="e.g. AX7B2R" style="font-family:var(--mono);font-size:1.8rem;text-transform:uppercase;letter-spacing:.15em">
+      </div>
+      <div class="form-pair">
+        <button class="btn btn-light" onclick="showView('gateway')">Back</button>
+        <button class="btn btn-dark" onclick="joinGroup()" style="flex:2">Sync Now</button>
+      </div>
+    </div>
+
+    <div style="margin-top:2rem;padding-top:1.25rem;border-top:2px solid #f1f5f9;text-align:center">
+      <p style="font-size:.6rem;font-weight:800;color:#cbd5e1;text-transform:uppercase;letter-spacing:.25em;font-style:italic">Produced by Disha Dutta</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MAIN APP ══════════ -->
+<div id="app">
+  <header class="header">
+    <div>
+      <div>
+        <span class="header-title">SplitDash</span>
+        <span class="badge">V2.1 GROUP</span>
+      </div>
+      <div class="group-code" id="group-info">Loading...</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.75rem">
+      <div class="avatar-stack" id="avatar-stack"></div>
+      <div class="live-badge">
+        <span class="pulse"></span>
+        <span id="live-badge-text">0 Active</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-grid">
+    <!-- LEFT COLUMN -->
+    <div>
+      <div class="toolbar">
+        <div class="section-title">📋 Orders</div>
+        <div class="toolbar-btns">
+          <button class="btn btn-dark btn-sm" onclick="promptAddItem()">＋ New Item</button>
+          <button class="btn btn-light btn-sm" onclick="undoAction()">↩ Undo</button>
+          <button class="btn btn-yellow btn-sm" onclick="autoSplit()">⚡ Auto-Split</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-header">
+          <div>Item Description &amp; Qty</div>
+          <div>Total Price</div>
+          <div>Stakeholders</div>
+        </div>
+        <div id="item-list"></div>
+      </div>
+
+      <div class="totals-bar" id="totals-bar">
+        <div class="totals-grid">
+          <div>
+            <div class="total-label">Total Subtotal</div>
+            <div class="total-value" id="tot-subtotal">₹0</div>
+          </div>
+          <div>
+            <div class="total-label" id="lbl-gst">GST (5%)</div>
+            <div class="total-value accent" id="tot-gst">₹0</div>
+          </div>
+          <div>
+            <div class="total-label" id="lbl-svc">Service Fee (2%)</div>
+            <div class="total-value accent" id="tot-svc">₹0</div>
+          </div>
+        </div>
+        <div class="grand-row">
+          <span class="grand-label">Group Total Owed</span>
+          <span class="grand-value" id="tot-grand">₹0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="sidebar">
+
+      <!-- Settled Progress -->
+      <div class="card-dark" style="border:4px solid var(--ink);box-shadow:8px 8px 0 var(--rose)">
+        <div class="card-head" style="color:#fb7185">Settled Share</div>
+        <div class="card-body">
+          <div class="progress-wrap">
+            <svg class="ring" width="96" height="96" viewBox="0 0 96 96">
+              <circle class="ring-track" cx="48" cy="48" r="36" stroke-width="12"/>
+              <circle class="ring-fill" id="ring-fill" cx="48" cy="48" r="36" stroke-width="12"
+                stroke-dasharray="226.2" stroke-dashoffset="226.2"/>
+            </svg>
+            <div style="position:absolute;left:1.5rem;top:50%;transform:translateY(-50%);pointer-events:none" id="ring-pct-wrap">
+              <!-- pct rendered by JS over the SVG -->
+            </div>
+            <div>
+              <div class="settled-amount" id="settled-amount">₹0</div>
+              <div class="settled-sub">Finalized in Bill</div>
+            </div>
+          </div>
+          <div id="ring-pct-overlay" style="position:relative;margin-top:-6rem;margin-left:1.5rem;width:96px;height:96px;display:flex;align-items:center;justify-content:center;pointer-events:none">
+            <span class="ring-pct" id="ring-pct-text">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="card-dark" style="border:4px solid var(--ink);box-shadow:8px 8px 0 var(--indigo)">
+        <div class="card-head" style="color:#818cf8">👑 Leaders</div>
+        <div class="leader-list" id="leader-list">
+          <div class="empty-msg" style="color:rgba(255,255,255,.3)">Waiting for group members...</div>
+        </div>
+      </div>
+
+      <!-- Breakdown per person -->
+      <div class="card" style="box-shadow:8px 8px 0 var(--ink)">
+        <div class="card-head">Breakdown per Person</div>
+        <div class="breakdown-list" id="breakdown-list">
+          <div class="empty-msg">No claims yet.</div>
+        </div>
+      </div>
+
+      <!-- Diner Status -->
+      <div class="card" style="box-shadow:8px 8px 0 var(--ink)">
+        <div class="card-head">Diner Status</div>
+        <div class="diner-list" id="diner-list">
+          <div class="empty-msg">Waiting for users...</div>
+        </div>
+      </div>
+
+      <!-- Insights -->
+      <div class="card" style="box-shadow:10px 10px 0 var(--yellow)">
+        <div class="card-head" style="color:#d97706">📊 Receipt Insights</div>
+        <div class="insights-grid" id="insights-grid"></div>
+        <div class="cat-bar-list" id="cat-bar-list"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="feedback-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:3px solid var(--slate2)">
+          <div style="font-size:1rem;font-weight:900;font-style:italic;text-transform:uppercase;display:flex;align-items:center;gap:.5rem">💬 Team Feedback</div>
+          <span style="font-size:.55rem;font-weight:900;letter-spacing:.15em;text-transform:uppercase;color:var(--slate4)">SplitDash V2.1</span>
+        </div>
+        <div id="feedback-body" style="padding:1.5rem">
+          <div class="form-field">
+            <label>How was the experience?</label>
+            <div class="star-row" id="star-row">
+              <button class="star-btn" data-star="1" onclick="setStar(1)">1</button>
+              <button class="star-btn" data-star="2" onclick="setStar(2)">2</button>
+              <button class="star-btn" data-star="3" onclick="setStar(3)">3</button>
+              <button class="star-btn" data-star="4" onclick="setStar(4)">4</button>
+              <button class="star-btn" data-star="5" onclick="setStar(5)">5</button>
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Details (Suggestions / Bugs)</label>
+            <textarea class="feedback-ta" id="feedback-ta" placeholder="Ex: The auto-split logic for 3 people was slightly off..."></textarea>
+          </div>
+          <button class="submit-btn" id="submit-btn" onclick="submitFeedback()" disabled>
+            ✉ Send to Disha
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    <div id="sync-id">Sync ID: —</div>
+    <div class="footer-right">
+      <div class="footer-badge">Production Verified SplitDash V2.1</div>
+      <div class="footer-author">Produced by Disha Dutta</div>
+    </div>
+  </footer>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════
+const ORDER_TIMEOUT_SEC = 120;
+const SYNC_CHANNEL = 'split_dash_v2_sync';
+const STORAGE_KEY = 'split_dash_session';
+const COLORS = ['#F43F5E','#10B981','#3B82F6','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#6366F1'];
+const ADJECTIVES = ['Hungry','Thirsty','Vibrant','Chill','Happy','Spice','Classic','Epic'];
+const NOUNS = ['Panda','Tiger','Falcon','Peacock','Ninja','Wizard','Elephant','Dino'];
+const TAX_RATE = 0.05;
+const TIP_RATE = 0.02;
+
+const INITIAL_ITEMS = [
+  {id:'1',name:'Butter Chicken',price:450,quantity:1,category:'food',claims:[],status:'unclaimed'},
+  {id:'2',name:'Garlic Naan',price:60,quantity:3,category:'food',claims:[],status:'unclaimed'},
+  {id:'3',name:'Paneer Tikka',price:320,quantity:1,category:'food',claims:[],status:'unclaimed'},
+  {id:'4',name:'Kingfisher Blue',price:180,quantity:4,category:'drink',claims:[],status:'unclaimed'},
+  {id:'5',name:'Masala Dosa',price:120,quantity:2,category:'food',claims:[],status:'unclaimed'},
+  {id:'6',name:'Gulab Jamun (2pcs)',price:90,quantity:2,category:'dessert',claims:[],status:'unclaimed'},
+  {id:'7',name:'Mineral Water',price:30,quantity:2,category:'drink',claims:[],status:'unclaimed'},
+  {id:'8',name:'Chicken Biryani',price:480,quantity:1,category:'food',claims:[],status:'unclaimed'},
+  {id:'9',name:'Mango Lassi',price:110,quantity:1,category:'drink',claims:[],status:'unclaimed'},
+];
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+function generateUser() {
+  const adj = ADJECTIVES[Math.floor(Math.random()*ADJECTIVES.length)];
+  const noun = NOUNS[Math.floor(Math.random()*NOUNS.length)];
+  const color = COLORS[Math.floor(Math.random()*COLORS.length)];
+  const id = crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2,11);
+  return { id, name:`${adj}${noun}`, color, joinedAt:Date.now() };
+}
+
+let currentUser = (() => {
+  try {
+    const s = localStorage.getItem(`${STORAGE_KEY}_user`);
+    if(s) return JSON.parse(s);
+  } catch(e) {}
+  const u = generateUser();
+  localStorage.setItem(`${STORAGE_KEY}_user`, JSON.stringify(u));
+  return u;
+})();
+
+let state = (() => {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if(s) {
+      const p = JSON.parse(s);
+      return { ...p, taxRate: TAX_RATE, tipRate: TIP_RATE };
+    }
+  } catch(e) {}
+  return {
+    groupCode: null, groupName: null,
+    items: INITIAL_ITEMS.map(i=>({...i, expirySeconds:ORDER_TIMEOUT_SEC})),
+    users: [], taxRate: TAX_RATE, tipRate: TIP_RATE,
+    history: [], sessionStartedAt: Date.now()
+  };
+})();
+
+let history = state.history || [];
+const MAX_HISTORY = 10;
+
+let bc = null;
+
+// ══════════════════════════════════════════
+// GATEWAY / ROUTING
+// ══════════════════════════════════════════
+function showView(v) {
+  document.getElementById('view-gateway').classList.add('hide');
+  document.getElementById('view-create').classList.add('hide');
+  document.getElementById('view-join').classList.add('hide');
+  document.getElementById('view-'+v).classList.remove('hide');
+}
+
+function createGroup() {
+  const name = document.getElementById('input-create-name').value.trim();
+  if(!name) { alert('Please enter a group name'); return; }
+  const code = Math.random().toString(36).substring(2,8).toUpperCase();
+  state.groupCode = code;
+  state.groupName = name;
+  upsertUser(currentUser);
+  saveState();
+  initBroadcast();
+  enterApp();
+}
+
+function joinGroup() {
+  const code = document.getElementById('input-join-code').value.trim().toUpperCase();
+  if(!code) { alert('Please enter a group code'); return; }
+  state.groupCode = code;
+  state.groupName = 'Joined Group';
+  upsertUser(currentUser);
+  saveState();
+  initBroadcast();
+  enterApp();
+}
+
+function enterApp() {
+  document.getElementById('gateway').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  render();
+}
+
+// ══════════════════════════════════════════
+// BROADCAST / SYNC
+// ══════════════════════════════════════════
+function initBroadcast() {
+  if(bc) bc.close();
+  bc = new BroadcastChannel(SYNC_CHANNEL);
+  bc.onmessage = (event) => {
+    const { type, payload, senderId } = event.data;
+    if(senderId === currentUser.id) return;
+    const currentCode = state.groupCode;
+    const incomingCode = payload?.groupCode;
+    if(type !== 'HANDSHAKE_REQUEST' && incomingCode !== currentCode) return;
+    if(type === 'HANDSHAKE_REQUEST') {
+      if(state.groupCode) bc.postMessage({ type:'HANDSHAKE_RESPONSE', payload:state, timestamp:Date.now(), senderId:currentUser.id });
+    } else if(type === 'HANDSHAKE_RESPONSE') {
+      if(payload.groupCode === state.groupCode) { state = payload; render(); }
+    } else if(type === 'USER_JOIN') {
+      upsertUser(payload); render();
+    } else if(type === 'UPDATE_STATE') {
+      state = payload; render();
+    }
+  };
+  bc.postMessage({ type:'HANDSHAKE_REQUEST', payload:null, timestamp:Date.now(), senderId:currentUser.id });
+  bc.postMessage({ type:'USER_JOIN', payload:currentUser, timestamp:Date.now(), senderId:currentUser.id });
+}
+
+function syncBroadcast() {
+  if(bc && state.groupCode) bc.postMessage({ type:'UPDATE_STATE', payload:state, timestamp:Date.now(), senderId:currentUser.id });
+}
+
+// ══════════════════════════════════════════
+// STATE MUTATIONS
+// ══════════════════════════════════════════
+function precision(v) { return Math.round((v+Number.EPSILON)*100)/100; }
+
+function saveHistory() {
+  history = [{ items: JSON.parse(JSON.stringify(state.items)), timestamp:Date.now() }, ...history].slice(0, MAX_HISTORY);
+}
+
+function saveState() {
+  state.history = history;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  syncBroadcast();
+}
+
+function upsertUser(user) {
+  if(!state.users.find(u => u.id === user.id)) state.users.push(user);
+}
+
+function claimItem(itemId, amount) {
+  const item = state.items.find(i => i.id === itemId);
+  if(!item || item.status === 'locked') return;
+  const totalValue = item.price * item.quantity;
+  const claimedTotal = item.claims.reduce((a,c) => a+c.amount, 0);
+  const remaining = precision(totalValue - claimedTotal);
+  const existingClaim = item.claims.find(c => c.userId === currentUser.id);
+  if(remaining <= 0 && !existingClaim) return;
+  const claimAmount = (amount !== undefined) ? amount : (remaining > 0 ? remaining : 0);
+  if(claimAmount <= 0) return;
+  saveHistory();
+  const idx = item.claims.findIndex(c => c.userId === currentUser.id);
+  if(idx > -1) item.claims[idx].amount = precision(item.claims[idx].amount + claimAmount);
+  else item.claims.push({ userId:currentUser.id, amount:claimAmount });
+  const totalAfter = item.claims.reduce((a,c) => a+c.amount, 0);
+  item.status = totalAfter >= totalValue ? 'claimed' : 'unclaimed';
+  item.expirySeconds = ORDER_TIMEOUT_SEC;
+  saveState(); render();
+}
+
+function unclaimItem(itemId) {
+  const item = state.items.find(i => i.id === itemId);
+  if(!item) return;
+  saveHistory();
+  item.claims = item.claims.filter(c => c.userId !== currentUser.id);
+  item.status = 'unclaimed';
+  item.expirySeconds = ORDER_TIMEOUT_SEC;
+  saveState(); render();
+}
+
+function lockItem(itemId) {
+  const item = state.items.find(i => i.id === itemId);
+  if(!item) return;
+  saveHistory();
+  item.status = 'locked';
+  saveState(); render();
+}
+
+function updateQuantity(itemId, qty) {
+  const item = state.items.find(i => i.id === itemId);
+  if(!item || item.status === 'locked') return;
+  saveHistory();
+  item.quantity = Math.max(1, qty);
+  item.claims = []; item.status = 'unclaimed';
+  saveState(); render();
+}
+
+function addItem(item) {
+  saveHistory();
+  state.items.push(item);
+  saveState(); render();
+}
+
+function undoAction() {
+  if(history.length === 0) return;
+  const [last, ...rest] = history;
+  history = rest;
+  state.items = last.items;
+  state.history = history;
+  saveState(); render();
+}
+
+function autoSplit() {
+  const unclaimed = state.items.filter(i => i.status === 'unclaimed');
+  if(unclaimed.length === 0 || state.users.length === 0) { alert('No unclaimed items or no users in group.'); return; }
+  saveHistory();
+  state.items.forEach(item => {
+    if(item.status !== 'unclaimed') return;
+    const totalValue = item.price * item.quantity;
+    const currentClaimed = item.claims.reduce((a,c) => a+c.amount, 0);
+    const remaining = precision(totalValue - currentClaimed);
+    if(remaining <= 0) return;
+    const perUser = precision(remaining / state.users.length);
+    state.users.forEach(user => {
+      const idx = item.claims.findIndex(c => c.userId === user.id);
+      if(idx > -1) item.claims[idx].amount = precision(item.claims[idx].amount + perUser);
+      else item.claims.push({ userId:user.id, amount:perUser, isAutoSplit:true });
+    });
+    item.status = 'claimed';
+  });
+  saveState(); render();
+}
+
+function promptAddItem() {
+  const name = prompt('Item Name?');
+  if(!name) return;
+  const priceStr = prompt('Price (₹)?');
+  if(!priceStr) return;
+  const price = Number(priceStr);
+  if(isNaN(price) || price <= 0) { alert('Invalid price'); return; }
+  addItem({ id: Math.random().toString(36).substr(2,9), name, price, quantity:1, category:'food', claims:[], status:'unclaimed', expirySeconds:ORDER_TIMEOUT_SEC });
+}
+
+// ══════════════════════════════════════════
+// TICK
+// ══════════════════════════════════════════
+setInterval(() => {
+  if(!state.groupCode) return;
+  let changed = false;
+  state.items.forEach(item => {
+    if(item.status === 'locked') return;
+    item.expirySeconds = Math.max(0, (item.expirySeconds||0) - 1);
+    if(item.expirySeconds === 0 && item.claims.length > 0) {
+      item.claims = []; item.status = 'unclaimed'; item.expirySeconds = ORDER_TIMEOUT_SEC; changed = true;
+    }
+  });
+  if(changed) { saveState(); render(); }
+  else renderExpiry();
+}, 1000);
+
+// ══════════════════════════════════════════
+// TOTALS
+// ══════════════════════════════════════════
+function calcTotals() {
+  const userBreakdowns = {};
+  let totalSubtotal = 0;
+  state.items.forEach(item => {
+    totalSubtotal += item.price * item.quantity;
+    item.claims.forEach(claim => {
+      if(!userBreakdowns[claim.userId]) userBreakdowns[claim.userId] = { subtotal:0, tax:0, tip:0, total:0 };
+      userBreakdowns[claim.userId].subtotal += claim.amount;
+    });
+  });
+  const taxAmount = totalSubtotal * state.taxRate;
+  const tipAmount = totalSubtotal * state.tipRate;
+  Object.keys(userBreakdowns).forEach(uid => {
+    const sub = userBreakdowns[uid].subtotal;
+    const prop = totalSubtotal === 0 ? 0 : sub / totalSubtotal;
+    userBreakdowns[uid].tax = prop * taxAmount;
+    userBreakdowns[uid].tip = prop * tipAmount;
+    userBreakdowns[uid].total = sub + userBreakdowns[uid].tax + userBreakdowns[uid].tip;
+  });
+  const settledCount = state.items.filter(i => i.status === 'locked').length;
+  const settledProgress = state.items.length === 0 ? 0 : settledCount / state.items.length;
+  return { userBreakdowns, totalSubtotal, taxAmount, tipAmount, grandTotal: totalSubtotal+taxAmount+tipAmount, settledProgress };
+}
+
+// ══════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════
+function getUserColor(userId) {
+  const u = state.users.find(u => u.id === userId);
+  return u ? u.color : '#888';
+}
+function getUserName(userId) {
+  const u = state.users.find(u => u.id === userId);
+  return u ? u.name : '??';
+}
+
+function renderItems() {
+  const list = document.getElementById('item-list');
+  list.innerHTML = '';
+  state.items.forEach(item => {
+    const totalValue = item.price * item.quantity;
+    const claimedTotal = item.claims.reduce((a,c) => a+c.amount, 0);
+    const myClaim = item.claims.find(c => c.userId === currentUser.id);
+    const isLocked = item.status === 'locked';
+
+    const row = document.createElement('div');
+    row.className = 'item-row' + (isLocked ? ' locked' : '');
+    row.id = 'row-' + item.id;
+
+    // Category bar
+    const catBar = document.createElement('div');
+    catBar.className = 'cat-bar cat-' + item.category;
+    row.appendChild(catBar);
+
+    // Col 1: name + qty
+    const col1 = document.createElement('div');
+    col1.innerHTML = `
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:.3rem">
+        <span class="item-name ${isLocked?'struck':''}">${item.name}</span>
+        <span class="qty-controls">
+          <button class="qty-btn" onclick="updateQuantity('${item.id}',${item.quantity-1})" ${isLocked?'disabled':''}>−</button>
+          <span class="qty-tag">${item.quantity}x</span>
+          <button class="qty-btn" onclick="updateQuantity('${item.id}',${item.quantity+1})" ${isLocked?'disabled':''}>+</button>
+        </span>
+      </div>
+      <div class="claim-avatars" id="avatars-${item.id}"></div>
+    `;
+    row.appendChild(col1);
+
+    // Col 2: price
+    const col2 = document.createElement('div');
+    col2.className = 'price-col';
+    col2.innerHTML = `<div class="price-main">₹${totalValue}</div><div class="price-ea">₹${item.price}/ea</div>`;
+    row.appendChild(col2);
+
+    // Col 3: actions
+    const col3 = document.createElement('div');
+    col3.className = 'action-col';
+    if(isLocked) {
+      col3.innerHTML = `<div class="locked-tag">🔒 Locked</div>`;
+    } else if(!myClaim) {
+      col3.innerHTML = `
+        <div class="action-btns">
+          <button class="claim-btn btn-claim-full" onclick="claimItem('${item.id}')">Full</button>
+          <button class="claim-btn btn-claim-split" onclick="toggleSplit('${item.id}')" style="border:3px solid var(--ink)">Split</button>
+        </div>
+        <div class="split-popup hide" id="split-${item.id}">
+          <label>Partial Amount (₹)</label>
+          <div class="split-popup-inner">
+            <input type="number" id="split-amt-${item.id}" placeholder="Amount" min="1" max="${totalValue}" style="flex:1">
+            <button class="btn-xs" onclick="claimPartial('${item.id}')">Add</button>
+          </div>
+        </div>
+      `;
+    } else {
+      col3.innerHTML = `
+        <div class="claimed-tag">₹${myClaim.amount} Claimed ✓</div>
+        <div class="action-btns" style="margin-top:.3rem">
+          <button class="btn-undo-small" onclick="unclaimItem('${item.id}')">Undo</button>
+          <button class="btn-lock-small" onclick="lockItem('${item.id}')">Lock</button>
+        </div>
+      `;
+    }
+    row.appendChild(col3);
+    list.appendChild(row);
+
+    // Claim avatars
+    const avatarWrap = document.getElementById('avatars-'+item.id);
+    item.claims.forEach(claim => {
+      const name = getUserName(claim.userId);
+      const color = getUserColor(claim.userId);
+      const av = document.createElement('div');
+      av.className = 'mini-avatar';
+      av.style.background = color;
+      av.title = `${name}: ₹${claim.amount}`;
+      av.textContent = name.slice(0,2);
+      avatarWrap.appendChild(av);
+    });
+    if(item.status === 'unclaimed' && (item.expirySeconds||0) < 30 && item.expirySeconds > 0 && item.claims.length > 0) {
+      const warn = document.createElement('span');
+      warn.className = 'expiry-warn';
+      warn.id = 'expiry-'+item.id;
+      warn.innerHTML = `⚠ Expires in ${item.expirySeconds}s`;
+      avatarWrap.appendChild(warn);
+    }
+  });
+}
+
+function renderExpiry() {
+  state.items.forEach(item => {
+    const el = document.getElementById('expiry-'+item.id);
+    if(el) el.textContent = `⚠ Expires in ${item.expirySeconds}s`;
+  });
+}
+
+function toggleSplit(itemId) {
+  const popup = document.getElementById('split-'+itemId);
+  if(popup) popup.classList.toggle('hide');
+}
+
+function claimPartial(itemId) {
+  const input = document.getElementById('split-amt-'+itemId);
+  const amount = Number(input.value);
+  if(!isNaN(amount) && amount > 0) { claimItem(itemId, amount); }
+  const popup = document.getElementById('split-'+itemId);
+  if(popup) popup.classList.add('hide');
+}
+
+function renderTotals() {
+  const t = calcTotals();
+  document.getElementById('tot-subtotal').textContent = '₹'+t.totalSubtotal.toFixed(0);
+  document.getElementById('lbl-gst').textContent = `GST (${(state.taxRate*100).toFixed(0)}%)`;
+  document.getElementById('tot-gst').textContent = '₹'+t.taxAmount.toFixed(0);
+  document.getElementById('lbl-svc').textContent = `Service Fee (${(state.tipRate*100).toFixed(0)}%)`;
+  document.getElementById('tot-svc').textContent = '₹'+t.tipAmount.toFixed(0);
+  document.getElementById('tot-grand').textContent = '₹'+t.grandTotal.toFixed(0);
+
+  // Progress ring
+  const progress = t.settledProgress;
+  const circumference = 226.2;
+  const offset = circumference - progress * circumference;
+  const ringFill = document.getElementById('ring-fill');
+  if(ringFill) ringFill.setAttribute('stroke-dashoffset', offset.toFixed(1));
+  const ringPct = document.getElementById('ring-pct-text');
+  if(ringPct) ringPct.textContent = Math.round(progress*100)+'%';
+  const settledAmt = document.getElementById('settled-amount');
+  if(settledAmt) settledAmt.textContent = '₹'+(t.grandTotal*progress).toFixed(0);
+
+  // Breakdown
+  const breakdownList = document.getElementById('breakdown-list');
+  breakdownList.innerHTML = '';
+  state.users.forEach(user => {
+    const b = t.userBreakdowns[user.id] || { subtotal:0, tax:0, tip:0, total:0 };
+    const row = document.createElement('div');
+    row.className = 'breakdown-row';
+    row.style.borderLeftColor = user.color;
+    row.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
+        <span class="breakdown-name">${user.name}</span>
+        <span class="breakdown-total">₹${b.total.toFixed(0)}</span>
+      </div>
+      <div class="breakdown-detail">
+        <div>Sub: ₹${b.subtotal.toFixed(0)}</div>
+        <div>GST: ₹${b.tax.toFixed(0)}</div>
+        <div>SVC: ₹${b.tip.toFixed(0)}</div>
+      </div>
+    `;
+    breakdownList.appendChild(row);
+  });
+  if(state.users.length === 0) breakdownList.innerHTML = '<div class="empty-msg">No claims yet.</div>';
+
+  // Leaderboard
+  const leaders = [...state.users].sort((a,b) => (t.userBreakdowns[b.id]?.total||0)-(t.userBreakdowns[a.id]?.total||0));
+  const leaderList = document.getElementById('leader-list');
+  leaderList.innerHTML = '';
+  if(leaders.length === 0) { leaderList.innerHTML = '<div class="empty-msg" style="color:rgba(255,255,255,.3)">Waiting for group members...</div>'; }
+  leaders.slice(0,3).forEach((user,idx) => {
+    const total = t.userBreakdowns[user.id]?.total||0;
+    const badges = getBadges(user, t.userBreakdowns);
+    const row = document.createElement('div');
+    row.className = 'leader-row';
+    row.innerHTML = `
+      <div class="leader-rank">#${idx+1}</div>
+      <div class="leader-info">
+        <div class="leader-name">${user.name}</div>
+        <div class="leader-badges">${badges.map(b=>`<span class="badge-pill ${b.cls}">${b.label}</span>`).join('')}</div>
+      </div>
+      <div class="leader-total">₹${total.toFixed(0)}</div>
+    `;
+    leaderList.appendChild(row);
+  });
+
+  // Diner status
+  const dinerList = document.getElementById('diner-list');
+  dinerList.innerHTML = '';
+  if(state.users.length === 0) { dinerList.innerHTML = '<div class="empty-msg">Waiting for users...</div>'; }
+  state.users.forEach(user => {
+    const userTotal = t.userBreakdowns[user.id] || { total:0 };
+    const userOrders = state.items.filter(i => i.claims.some(c => c.userId === user.id));
+    const row = document.createElement('div');
+    row.className = 'diner-row';
+    row.style.borderLeftColor = user.color;
+    const hasClaims = userTotal.total > 0;
+    row.innerHTML = `
+      <div class="diner-name-row">
+        <span class="diner-name">${user.name}</span>
+        <span class="diner-total-badge" style="${hasClaims?'background:#eef2ff;border-color:#a5b4fc;color:#4338ca':'background:#f8fafc;border-color:#e2e8f0;color:#94a3b8'}">₹${userTotal.total.toFixed(0)}</span>
+      </div>
+      <div class="item-tags">
+        ${userOrders.length > 0 ? userOrders.map(item => {
+          const amt = item.claims.find(c=>c.userId===user.id)?.amount||0;
+          return `<span class="item-tag">${item.name} <span>₹${amt}</span></span>`;
+        }).join('') : '<span style="font-size:.65rem;font-style:italic;color:var(--slate4)">No items claimed yet...</span>'}
+      </div>
+    `;
+    dinerList.appendChild(row);
+  });
+
+  // Insights
+  const items = state.items;
+  const total = items.reduce((a,i) => a+i.price*i.quantity, 0);
+  const avg = total / (items.length||1);
+  const mostExp = items.reduce((p,c) => (p.price*p.quantity > c.price*c.quantity) ? p : c, items[0]);
+  const ig = document.getElementById('insights-grid');
+  ig.innerHTML = mostExp ? `
+    <div class="insight-cell">
+      <div class="insight-label">Most Expensive</div>
+      <div class="insight-val">${mostExp.name}</div>
+      <div class="insight-sub">₹${mostExp.price*mostExp.quantity}</div>
+    </div>
+    <div class="insight-cell">
+      <div class="insight-label">Average Item</div>
+      <div class="insight-val">Cost/Type</div>
+      <div class="insight-sub">₹${avg.toFixed(0)}</div>
+    </div>
+  ` : '';
+  const catMap = {};
+  items.forEach(i => { catMap[i.category] = (catMap[i.category]||0) + i.price*i.quantity; });
+  const catBars = document.getElementById('cat-bar-list');
+  catBars.innerHTML = Object.entries(catMap).map(([cat,val]) => `
+    <div>
+      <div class="cat-row-label"><span style="color:var(--slate4)">${cat}</span><span>₹${val.toFixed(0)}</span></div>
+      <div class="cat-track"><div class="cat-fill ${cat}" style="width:${(total?val/total*100:0).toFixed(1)}%"></div></div>
+    </div>
+  `).join('');
+}
+
+function renderHeader() {
+  document.getElementById('group-info').innerHTML = `${state.groupName} // Code: <span>${state.groupCode}</span>`;
+  document.getElementById('sync-id').textContent = 'Sync ID: '+SYNC_CHANNEL;
+  document.getElementById('live-badge-text').textContent = `${state.users.length} Active in ${state.groupName}`;
+
+  const stack = document.getElementById('avatar-stack');
+  stack.innerHTML = '';
+  state.users.forEach((u,i) => {
+    const av = document.createElement('div');
+    av.className = 'avatar';
+    av.style.cssText = `background:${u.color};z-index:${10-i}`;
+    av.title = u.name;
+    av.textContent = u.name.slice(0,2);
+    stack.appendChild(av);
+  });
+}
+
+function getBadges(user, userBreakdowns) {
+  const badges = [];
+  const stats = userBreakdowns[user.id]||{total:0};
+  if(user.name.toLowerCase().includes('chill')&&user.name.toLowerCase().includes('falcon'))
+    badges.push({ label:'👑 Alpha Falcon', cls:'badge-pill' });
+  if(stats.total > 1000) badges.push({ label:'💰 Big Spender', cls:'badge-pill' });
+  const userClaims = state.items.filter(i => i.claims.some(c => c.userId===user.id));
+  const cats = userClaims.map(i => i.category);
+  if(cats.filter(c=>c==='drink').length >= 3) badges.push({ label:'🍺 Hydrated', cls:'badge-pill' });
+  if(cats.filter(c=>c==='food').length >= 4) badges.push({ label:'🍕 Feaster', cls:'badge-pill' });
+  if(userClaims.length > 0 && Math.min(...userClaims.map(i=>i.expirySeconds||999)) > 110)
+    badges.push({ label:'✨ Fast Fingers', cls:'badge-pill' });
+  return badges;
+}
+
+function render() {
+  renderHeader();
+  renderItems();
+  renderTotals();
+}
+
+// ══════════════════════════════════════════
+// FEEDBACK
+// ══════════════════════════════════════════
+let feedbackRating = 0;
+
+function setStar(n) {
+  feedbackRating = n;
+  document.querySelectorAll('.star-btn').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.star) <= n);
+  });
+  updateSubmitBtn();
+}
+
+function updateSubmitBtn() {
+  const ta = document.getElementById('feedback-ta');
+  const btn = document.getElementById('submit-btn');
+  if(btn) btn.disabled = !(ta && ta.value.trim() && feedbackRating > 0);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const ta = document.getElementById('feedback-ta');
+  if(ta) ta.addEventListener('input', updateSubmitBtn);
+});
+
+function submitFeedback() {
+  const ta = document.getElementById('feedback-ta');
+  if(!ta.value.trim() || feedbackRating === 0) return;
+  const body = document.getElementById('feedback-body');
+  body.innerHTML = `
+    <div class="thanks-box">
+      <div class="thanks-icon">❤️</div>
+      <div class="thanks-title">Sweet Feedback Received!</div>
+      <div class="thanks-sub">Disha Dutta will review this soon.</div>
+    </div>
+  `;
+  setTimeout(() => {
+    feedbackRating = 0;
+    body.innerHTML = `
+      <div class="form-field">
+        <label>How was the experience?</label>
+        <div class="star-row" id="star-row">
+          <button class="star-btn" data-star="1" onclick="setStar(1)">1</button>
+          <button class="star-btn" data-star="2" onclick="setStar(2)">2</button>
+          <button class="star-btn" data-star="3" onclick="setStar(3)">3</button>
+          <button class="star-btn" data-star="4" onclick="setStar(4)">4</button>
+          <button class="star-btn" data-star="5" onclick="setStar(5)">5</button>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Details (Suggestions / Bugs)</label>
+        <textarea class="feedback-ta" id="feedback-ta" placeholder="Ex: The auto-split logic for 3 people was slightly off..."></textarea>
+      </div>
+      <button class="submit-btn" id="submit-btn" onclick="submitFeedback()" disabled>✉ Send to Disha</button>
+    `;
+    document.getElementById('feedback-ta').addEventListener('input', updateSubmitBtn);
+  }, 5000);
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+if(state.groupCode) {
+  initBroadcast();
+  enterApp();
+}
+
+// Enter key shortcuts
+document.getElementById('input-create-name').addEventListener('keydown', e => { if(e.key==='Enter') createGroup(); });
+document.getElementById('input-join-code').addEventListener('keydown', e => { if(e.key==='Enter') joinGroup(); });
+document.getElementById('input-join-code').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+</script>
+</body>
+</html>
